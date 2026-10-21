@@ -1,0 +1,8 @@
+{
+  "name": "wayleave-control-plane",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome MV3 extension. The logic is plain modules so it tests in Node.",
+  "scripts": { "test": "node --test test/*.test.js" }
+}

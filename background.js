@@ -43,7 +43,7 @@ const writeSession = (s) => chrome.storage.session.set({ [SESSION]: s });
  * a deliberate gate, and the reason sign-in fails loudly rather than
  * silently sending somebody's tokens to a host nobody vetted.
  */
-async function signIn() {
+export async function signIn() {
   const cfg = await discoverAuth();
   const redirect = chrome.identity.getRedirectURL();
   const url = `${cfg.supabaseUrl}/auth/v1/authorize`
@@ -69,7 +69,7 @@ async function signIn() {
   return session;
 }
 
-async function signOut() {
+export async function signOut() {
   await chrome.storage.session.remove(SESSION);
   await chrome.storage.local.remove([CURSOR, FEED]);
 }
@@ -81,7 +81,7 @@ async function signOut() {
  * cursor so nothing is missed. Rows are capped at 200 in storage — a popup
  * shows a window, and an unbounded local log is a slow leak nobody notices.
  */
-async function poll() {
+export async function poll() {
   const session = await readSession();
   if (!session) return { signedIn: false };
 
@@ -111,12 +111,12 @@ async function poll() {
 /* Polling continues while the popup is shut, so opening it shows current
    numbers rather than a spinner. An alarm rather than setInterval, because
    setInterval dies with the worker and an alarm wakes it. */
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime?.onInstalled?.addListener(() => {
   chrome.alarms.create('wl.poll', { periodInMinutes: 1 });
 });
-chrome.alarms?.onAlarm.addListener((a) => { if (a.name === 'wl.poll') poll(); });
+chrome.alarms?.onAlarm?.addListener((a) => { if (a.name === 'wl.poll') poll(); });
 
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+chrome.runtime?.onMessage?.addListener((msg, _sender, reply) => {
   (async () => {
     try {
       if (msg.type === 'signIn') { await signIn(); reply(await poll()); return; }
