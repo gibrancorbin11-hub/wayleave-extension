@@ -2,12 +2,36 @@
   "manifest_version": 3,
   "name": "Wayleave Control Plane",
   "version": "1.0.0",
-  "description": "See the agent traffic reaching your sites, change route policy, and track metering — from the toolbar.",
-  "action": { "default_popup": "popup.html", "default_title": "Wayleave" },
-  "background": { "service_worker": "background.js", "type": "module" },
-  "permissions": ["storage", "identity", "alarms"],
-  "host_permissions": ["https://meter.wayleave.dev/*"],
+  "description": "See the agent traffic reaching your sites, change route policy, and track metering \u2014 from the toolbar.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Wayleave",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "identity",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://meter.wayleave.dev/*"
+  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
   }
 }
