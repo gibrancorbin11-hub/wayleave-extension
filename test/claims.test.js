@@ -90,3 +90,23 @@ test('the popup never fetches', () => {
   const popup = read('popup.js');
   assert.doesNotMatch(popup, /\bfetch\s*\(/, 'popup.js must not call fetch directly');
 });
+
+test('the hand-off puts the token in the fragment, never the query', () => {
+  /* A query string reaches the server, appears in access logs and travels
+     in a Referer header. A fragment does none of those, and wl-auth.js
+     strips it with replaceState the moment it lands. */
+  const src = read('popup.js');
+  const fn = src.slice(src.indexOf('async function openDashboard'),
+                       src.indexOf('$(\'openDash\')'));
+  assert.match(fn, /\$\{base\}#\$\{q\}/, 'the token goes after a #');
+  assert.doesNotMatch(fn, /\$\{base\}\?\$\{q\}|base \+ '\?'/, 'never after a ?');
+  assert.match(fn, /access_token/);
+});
+
+test('signed out, the hand-off opens the plain dashboard', () => {
+  const src = read('popup.js');
+  const fn = src.slice(src.indexOf('async function openDashboard'),
+                       src.indexOf('$(\'openDash\')'));
+  assert.match(fn, /let url = base/, 'the default is the bare URL');
+  assert.match(fn, /if \(s\?\.access_token\)/, 'the fragment is only added when there is one');
+});

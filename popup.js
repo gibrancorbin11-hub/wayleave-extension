@@ -152,6 +152,43 @@ $('signIn').addEventListener('click', async () => {
   paint(r);
 });
 
+/**
+ * Open the dashboard already signed in.
+ *
+ * The extension and the website hold separate sessions — one in
+ * chrome.storage.session, one in wayleave.dev's own storage — so a plain
+ * link lands on a sign-in page for somebody who just signed in here.
+ *
+ * The session is handed over in the URL FRAGMENT, which is the same
+ * mechanism Supabase's own OAuth return already uses: wl-auth.js reads
+ * access_token / refresh_token / expires_in out of the hash and then calls
+ * history.replaceState to strip it, so the token never reaches the address
+ * bar for more than an instant and never appears in history. A fragment is
+ * also never sent to the server and never travels in a Referer header.
+ *
+ * Signed out, or missing a token, it opens the plain dashboard rather than
+ * a URL with an empty fragment that would look like a broken hand-off.
+ */
+async function openDashboard() {
+  const base = 'https://wayleave.dev/app';
+  let url = base;
+  try {
+    const { 'wl.session': s } = await chrome.storage.session.get('wl.session');
+    if (s?.access_token) {
+      const q = new URLSearchParams({ access_token: s.access_token });
+      if (s.refresh_token) q.set('refresh_token', s.refresh_token);
+      // seconds remaining, floored at 60 so the dashboard is never handed
+      // something already expired
+      const left = Math.max(60, Math.round(((s.expires_at || 0) - Date.now()) / 1000));
+      q.set('expires_in', String(left));
+      url = `${base}#${q}`;
+    }
+  } catch { /* fall through to the plain dashboard */ }
+  chrome.tabs.create({ url });
+}
+
+$('openDash').addEventListener('click', (e) => { e.preventDefault(); openDashboard(); });
+
 $('signOut').addEventListener('click', async () => { paint(await ask({ type: 'signOut' })); });
 
 function paint(snap) {

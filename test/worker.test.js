@@ -165,3 +165,67 @@ test('signing out clears the data as well as the token', async () => {
   assert.deepEqual(stores.session, {});
   assert.deepEqual(stores.local, {}, 'another account must not inherit the last one\'s feed');
 });
+
+/* ── the dashboard hand-off ─────────────────────────────────────────────
+   Clicking "Open dashboard" must not land on a sign-in page for somebody
+   who signed in to the extension a second ago. The two hold separate
+   sessions, so the token travels in the URL fragment — the same mechanism
+   Supabase's own OAuth return uses, and the one wl-auth.js already reads. */
+
+test('a refresh token is kept, because the dashboard needs it', async () => {
+  /* Without one the handed-over session cannot renew and dies at expiry:
+     signed in for an hour, then silently signed out mid-session. */
+  const stores = { session: {}, local: {} };
+  const mk = (n) => ({
+    get: async (k) => Object.fromEntries((Array.isArray(k) ? k : [k]).map((x) => [x, stores[n][x]])),
+    set: async (o) => Object.assign(stores[n], o),
+    remove: async (k) => (Array.isArray(k) ? k : [k]).forEach((x) => delete stores[n][x]),
+  });
+  globalThis.chrome = {
+    storage: { session: mk('session'), local: mk('local') },
+    identity: {
+      getRedirectURL: () => 'https://x.chromiumapp.org/',
+      launchWebAuthFlow: async () =>
+        'https://x.chromiumapp.org/#access_token=AT&refresh_token=RT&expires_in=3600',
+    },
+    runtime: {}, alarms: {},
+  };
+  globalThis.fetch = async () => ({
+    ok: true, status: 200,
+    json: async () => ({ supabaseUrl: 'https://p.supabase.co', supabaseAnonKey: 'anon' }),
+  });
+
+  const w = await import(`../background.js?t=${Math.random()}`);
+  await w.signIn();
+  const s = stores.session['wl.session'];
+  assert.equal(s.access_token, 'AT');
+  assert.equal(s.refresh_token, 'RT', 'kept for the hand-off');
+  assert.ok(s.expires_at > Date.now(), 'and an expiry the hand-off can compute from');
+});
+
+test('a sign-in with no refresh token still works', async () => {
+  /* Some flows do not return one. Storing undefined would be fine; what
+     must not happen is signIn() failing over it. */
+  const stores = { session: {}, local: {} };
+  const mk = (n) => ({
+    get: async (k) => Object.fromEntries((Array.isArray(k) ? k : [k]).map((x) => [x, stores[n][x]])),
+    set: async (o) => Object.assign(stores[n], o),
+    remove: async (k) => (Array.isArray(k) ? k : [k]).forEach((x) => delete stores[n][x]),
+  });
+  globalThis.chrome = {
+    storage: { session: mk('session'), local: mk('local') },
+    identity: {
+      getRedirectURL: () => 'https://x.chromiumapp.org/',
+      launchWebAuthFlow: async () => 'https://x.chromiumapp.org/#access_token=AT&expires_in=3600',
+    },
+    runtime: {}, alarms: {},
+  };
+  globalThis.fetch = async () => ({
+    ok: true, status: 200,
+    json: async () => ({ supabaseUrl: 'https://p.supabase.co', supabaseAnonKey: 'anon' }),
+  });
+  const w = await import(`../background.js?t=${Math.random()}`);
+  await w.signIn();
+  assert.equal(stores.session['wl.session'].access_token, 'AT');
+  assert.equal(stores.session['wl.session'].refresh_token, null);
+});

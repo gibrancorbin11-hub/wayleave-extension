@@ -60,8 +60,14 @@ export async function signIn() {
     throw new Error(decodeURIComponent(err).replace(/\+/g, ' '));
   }
 
+  /* refresh_token is kept because the dashboard needs it on hand-off.
+     Without one, a session passed to wayleave.dev cannot renew itself and
+     dies at expiry — the person would be signed in for an hour and then
+     silently signed out mid-session, which is worse than not handing it
+     over at all. */
   const session = {
     access_token,
+    refresh_token: p.get('refresh_token') || null,
     expires_at: Date.now() + (Number(p.get('expires_in') || 3600) * 1000),
   };
   await writeSession(session);
