@@ -1,0 +1,71 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Wayleave Control Plane</title>
+<link rel="stylesheet" href="popup.css">
+
+<div class="shell">
+
+  <header class="bar">
+    <span class="title">WAYLEAVE CONTROL PLANE <b>v1.0</b></span>
+    <button id="signOut" class="ghost" hidden>Sign out</button>
+  </header>
+
+  <!-- signed out -->
+  <section id="connect" class="pad center" hidden>
+    <div class="mark" aria-hidden="true">W</div>
+    <h1>Connect to Wayleave</h1>
+    <p class="muted">
+      See the agent traffic reaching your sites, change route policy, and track
+      metering. The extension never reads your browsing.
+    </p>
+    <button id="signIn" class="primary">Sign in with Wayleave</button>
+    <p class="fine">Opens a browser-managed window.</p>
+  </section>
+
+  <!-- signed in -->
+  <section id="console" hidden>
+    <div class="status">
+      <span><i class="dot"></i> <b id="stateLabel">ACTIVE</b> <span class="muted" id="account"></span></span>
+      <span class="muted" id="policyVer">policy —</span>
+    </div>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" class="on" data-tab="telemetry">Telemetry</button>
+      <button role="tab" data-tab="policies">Route Policies</button>
+      <button role="tab" data-tab="metering">Metering</button>
+    </nav>
+
+    <div class="pad panel" data-panel="telemetry">
+      <div class="eyebrow">LIVE TRAFFIC MONITOR · <span id="reqCount">0</span> requests</div>
+      <ul class="lanes" id="lanes"></ul>
+      <div class="eyebrow mt">RECENT ACTIVITY</div>
+      <ul class="feed" id="feed"></ul>
+      <p class="fine" id="feedNote"></p>
+    </div>
+
+    <div class="pad panel" data-panel="policies" hidden>
+      <div class="eyebrow">ROUTE POLICY</div>
+      <p class="muted" id="policySummary">Loading…</p>
+      <pre class="doc" id="policyDoc"></pre>
+      <p class="fine">
+        Served signed with Ed25519. Changing policy is done in the dashboard —
+        this extension shows what is in force.
+      </p>
+    </div>
+
+    <div class="pad panel" data-panel="metering" hidden>
+      <div class="eyebrow">SETTLEMENTS</div>
+      <ul class="feed" id="settlements"></ul>
+      <p class="fine" id="meterNote"></p>
+    </div>
+
+    <footer class="foot">
+      <span class="muted" id="lastSync">—</span>
+      <a id="openDash" href="https://wayleave.dev/app" target="_blank" rel="noopener">Open dashboard</a>
+    </footer>
+  </section>
+
+  <p class="pad err" id="error" hidden></p>
+</div>
+
+<script type="module" src="popup.js"></script>
