@@ -21,7 +21,7 @@
  * request in flight and leave the cursor half-advanced. The worker owns the
  * token and the polling; the popup asks it for a snapshot and renders.
  */
-import { discoverAuth, receiptsSince, receiptsLatest } from './api.js';
+import { discoverAuth, receiptsSince, receiptsLatest, isOwnTraffic } from './api.js';
 
 const SESSION = 'wl.session';      // chrome.storage.session — token, memory only
 const CURSOR = 'wl.cursor';        // chrome.storage.local  — where polling got to
@@ -103,11 +103,26 @@ export async function poll() {
        is kept newest-first, so forward pages are reversed before they go on
        the front. Getting this backwards shows a feed that scrolls the wrong
        way only once traffic is live, which is a hard thing to notice. */
-    const incoming = cursor ? got.receipts.slice().reverse() : got.receipts;
+    const ordered = cursor ? got.receipts.slice().reverse() : got.receipts;
+
+    /* Drop our own calls before they reach the feed.
+     *
+     * Not cosmetic. If the Meter's control plane is ever put behind a gate,
+     * every poll this worker makes becomes a crossing, and the lane bars
+     * climb while the popup sits open with nobody visiting anything. The
+     * number would be real and the meaning would be false, which is worse
+     * than a number that is simply wrong.
+     *
+     * Filtered here rather than at render, so the cached feed on disk is
+     * clean too -- a later version that reads it cannot resurrect them. */
+    const incoming = ordered.filter((r) => !isOwnTraffic(r));
+
     const merged = [...incoming, ...feed].slice(0, 200);
 
     await chrome.storage.local.set({ [FEED]: merged, [CURSOR]: got.cursor });
-    return { signedIn: true, receipts: merged, fresh: incoming.length };
+    const selfDropped = ordered.length - incoming.length;
+    return { signedIn: true, receipts: merged, fresh: incoming.length,
+             ...(selfDropped ? { selfDropped } : {}) };
   } catch (e) {
     if (e.expired) { await signOut(); return { signedIn: false, reason: 'session expired' }; }
     return { signedIn: true, receipts: feed, error: String(e.message || e) };

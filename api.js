@@ -32,9 +32,49 @@
 
 export const METER = 'https://meter.wayleave.dev';
 
+/**
+ * Every request this extension makes carries this header.
+ *
+ * A monitor that can be counted by the thing it monitors reports its own
+ * heartbeat as traffic, and the number climbs on its own with nothing behind
+ * it. wayleave.dev has now been bitten by that shape twice: a gate metering
+ * the page's own JavaScript, and a 404 page handing crawlers relative links
+ * that generated an unbounded tree of self-inflicted misses.
+ *
+ * The Meter's control-plane API is not behind a gate today, so these polls
+ * record nothing. "Not gated today" is not a property anyone should have to
+ * re-verify, so the requests are marked at the source: an origin that ever
+ * does gate /v1/account/* can drop them by this header instead of counting
+ * them, and anyone reading an access log can see what they were.
+ *
+ * isOwnTraffic() below is the second half, and the half that does not depend
+ * on the server doing the right thing.
+ */
+export const CLIENT_HEADER = 'x-wayleave-client';
+export const CLIENT_ID = 'control-plane-extension';
+
+/**
+ * Is this receipt one of our own calls?
+ *
+ * Displaying it would be a lie of exactly the kind this product exists to
+ * stop: a lane bar that rises because the panel is open, not because anybody
+ * crossed anything. Checked on the client because the client is the only
+ * party that knows for certain which requests it made.
+ */
+export function isOwnTraffic(receipt) {
+  if (!receipt) return false;
+  const host = String(receipt.host || '').toLowerCase();
+  const path = String(receipt.path || '');
+  if (String(receipt.client || receipt.identity || '').includes(CLIENT_ID)) return true;
+  // the Meter's own control plane, which is the only thing this extension calls
+  return host === 'meter.wayleave.dev' && (path.startsWith('/v1/account') || path === '/v1/config');
+}
+
 /** Supabase project, as the Meter itself publishes it. Never a secret. */
 export async function discoverAuth() {
-  const r = await fetch(`${METER}/v1/config`, { headers: { accept: 'application/json' } });
+  const r = await fetch(`${METER}/v1/config`, {
+    headers: { accept: 'application/json', [CLIENT_HEADER]: CLIENT_ID },
+  });
   if (!r.ok) throw new Error(`sign-in is unavailable (config ${r.status})`);
   const c = await r.json();
   if (!c.supabaseUrl || !c.supabaseAnonKey)
@@ -55,6 +95,7 @@ export async function account(path, token, init = {}) {
     headers: {
       authorization: `Bearer ${token}`,
       'content-type': 'application/json',
+      [CLIENT_HEADER]: CLIENT_ID,
       ...(init.headers || {}),
     },
   });

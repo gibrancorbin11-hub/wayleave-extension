@@ -44,6 +44,30 @@ Two more properties worth knowing:
   nothing is loaded off-origin, and no key or anon JWT is baked into the
   source — the Supabase config is fetched from `/v1/config` at runtime.
 
+## It cannot measure itself
+
+A monitor that the monitored system can count reports its own heartbeat as
+traffic, and the number rises on its own with nothing behind it.
+
+This extension polls the Meter for as long as it stays installed. The Meter's
+control plane is not behind a gate today, so those polls record nothing — but
+that is a fact about a server, not a property of this extension. The day it
+changes, the lane bars would climb while the popup sits open and nobody has
+visited anything: a real number with a false meaning, which is worse than a
+number that is simply wrong.
+
+Two halves, and the second does not depend on the server:
+
+- Every outbound request carries `x-wayleave-client: control-plane-extension`,
+  so an origin that does gate `/v1/account/*` can drop them by header rather
+  than count them, and an access log says what they were.
+- The service worker discards its own calls **before** they reach the feed or
+  the cached copy on disk, and reports how many it dropped rather than hiding
+  the drop.
+
+`test/self-traffic.test.js` fails if either stops being true, including if the
+filter grows broad enough to swallow a customer's real crossings.
+
 ## Opening the dashboard
 
 "Open dashboard" hands your session to wayleave.dev so you are not asked to
@@ -54,7 +78,7 @@ it with `history.replaceState` the moment it lands.
 ## Development
 
 ```bash
-npm test     # 27 tests, no dependencies, runs in plain Node
+npm test     # 34 tests, no dependencies, runs in plain Node
 ```
 
 The logic is plain ES modules with `chrome.*` injected, so the service worker,
