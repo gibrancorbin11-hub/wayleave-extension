@@ -21,12 +21,19 @@ const ask = (msg) => chrome.runtime.sendMessage(msg);
  * sold on. Showing the invented lane and hiding the real one would have been
  * a redesign of the product, not a skin.
  *
+ * `human` is labelled "Unclassified" rather than "Human". The lane is a
+ * fall-through: it is reached by tripping none of the automation tells, which
+ * is absence of evidence and not evidence of a person. A bot that sends a
+ * browser user-agent and an accept-language header lands here, and the README
+ * says so. Calling it "Human" asserts something no check established, which is
+ * the one thing this vocabulary is built to avoid.
+ *
  * `unknown` is deliberately absent, as it is on the dashboard: it is this
  * system failing to classify, not a kind of visitor, and giving it a lane
  * bar would invite somebody to write policy against it.
  */
 const LANES = [
-  { key: 'human',           label: 'Human',          css: 'var(--human)' },
+  { key: 'human',           label: 'Unclassified',   css: 'var(--human)' },
   { key: 'verified_agent',  label: 'Verified agent', css: 'var(--verified)' },
   { key: 'declared_agent',  label: 'Declared agent', css: 'var(--declared)' },
   { key: 'suspected_bot',   label: 'Suspected bot',  css: 'var(--suspect)' },
